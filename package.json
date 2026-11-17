@@ -1,0 +1,12 @@
+{
+  "name": "pos",
+  "version": "1.0.0",
+  "description": "Point of Sale",
+  "license": "ISC",
+  "author": "Madyan Eka Septian",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npx tsx watch src/index"
+  }
+}
