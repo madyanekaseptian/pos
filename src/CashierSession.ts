@@ -45,13 +45,6 @@ export class CashierSession {
     this.addProductToCart(product, quantity)
   }
 
-  scanProduct(product: Product, quantity: number): void {
-    const inventoryItem = this.inventory.getItem(product.id)
-    const availableStock = inventoryItem ? inventoryItem.quantity : 0
-
-    this.cart.addItem(product, quantity, availableStock)
-  }
-
   decreaseProduct(productId: string, quantity: number): void {
     this.cart.decreaseItem(productId, quantity)
   }
