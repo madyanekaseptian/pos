@@ -1,4 +1,4 @@
-import { Cart } from './Cart.js'
+import { CashierSession } from './CashierSession.js'
 import { CheckoutService } from './CheckoutService.js'
 import { Inventory } from './Inventory.js'
 import { OrderRepository } from './OrderRepository.js'
@@ -7,21 +7,22 @@ import { Product } from './Product.js'
 const inventory = new Inventory()
 const orderRepo = new OrderRepository()
 const checkoutService = new CheckoutService(inventory, orderRepo)
+const cashier = new CashierSession(inventory, checkoutService)
 
-const coffee = new Product('P01', 'Iced Latte', 25000)
-const pastry = new Product('P02', 'Croissant', 20000)
-inventory.restock(coffee, 20)
-inventory.restock(pastry, 20)
+const mouse = new Product('P01', 'Logitech M650', 500000)
+inventory.restock(mouse, 3)
 
-// Transaksi Pelanggan 1
-const cart = new Cart()
-cart.addItem(coffee, 2) // 50.000
-checkoutService.processCheckout(cart, 50000)
+// Kasir scan 2 mouse ->  Berhasil
+cashier.scanProduct(mouse, 2)
 
-// Transaksi Pelanggan 2
-cart.addItem(pastry, 3) // 60.000
-checkoutService.processCheckout(cart, 100000)
+// Kasir menekan tombol "+" 2 kali lagi (total diminta jadi 4, padahal stok 3)
+try {
+  cashier.scanProduct(mouse, 2)
+} catch (error) {
+  console.error((error as Error).message)
+  // Output: Cannot add 2x Logitech M650. Only 3 left in stock (already have 2 in cart).
+}
 
-// Cek Laporan Riwayat Transaksi
-console.log('Jumlah Transaksi:', orderRepo.getAllOrders().length) // Output: 2
-console.log('Total Omzet Hari Ini:', orderRepo.getTotalRevenue()) // Output: 110000
+// Kasir menekan tombol "+" 1 kali saja (total jadi 3) -> Berhasil
+cashier.scanProduct(mouse, 1)
+console.log('Total keranjang:', cashier.getCartTotal()) // Output: 1500000

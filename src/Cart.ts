@@ -4,8 +4,20 @@ import type { Product } from './Product.js'
 export class Cart {
   private items: Map<string, CartItem> = new Map()
 
-  addItem(product: Product, quantity: number = 1): void {
+  addItem(
+    product: Product,
+    quantity: number = 1,
+    availableStock?: number,
+  ): void {
     const existingItem = this.items.get(product.id)
+    const currentQuantityInCart = existingItem ? existingItem.quantity : 0
+    const totalRequested = currentQuantityInCart + quantity
+
+    // Validasi langsung jika informasi stok diberikan
+    if (availableStock !== undefined && totalRequested > availableStock)
+      throw new Error(
+        `Cannot add ${quantity}x ${product.name}. Only ${availableStock} left in stock (already have ${currentQuantityInCart} in cart).`,
+      )
 
     if (existingItem) {
       existingItem.increaseQuantity(quantity)
