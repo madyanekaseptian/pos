@@ -2,10 +2,14 @@ import type { Cart } from './Cart.js'
 import type { Inventory } from './Inventory.js'
 import { Order } from './Order.js'
 import { OrderItem } from './OrderItem.js'
+import type { OrderRepository } from './OrderRepository.js'
 
 // Orchestrator for the Checkout Process
 export class CheckoutService {
-  constructor(private readonly inventory: Inventory) {}
+  constructor(
+    private readonly inventory: Inventory,
+    private readonly orderRepository: OrderRepository,
+  ) {}
 
   processCheckout(cart: Cart, amountPaid: number): Order {
     if (cart.isEmpty) {
@@ -19,14 +23,14 @@ export class CheckoutService {
       )
     }
 
-    // Step 1: Deduct stock from inventory (throws error if any stock is insufficient)
+    // Deduct stock from inventory (throws error if any stock is insufficient)
     const stockDeductions = cart.getAllItems().map((item) => ({
       productId: item.product.id,
       quantity: item.quantity,
     }))
     this.inventory.fulfillOrder(stockDeductions)
 
-    // Step 2: Create immutable OrderItems snapshot
+    // Create immutable OrderItems snapshot
     const orderItems = cart
       .getAllItems()
       .map(
@@ -39,11 +43,13 @@ export class CheckoutService {
           ),
       )
 
-    // Step 3: Generate Order receipt
-    const orderId = `ORD-${Date.now()}`
+    // Generate Order receipt
+    const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`
     const order = new Order(orderId, orderItems, totalAmount, amountPaid)
 
-    // Step 4: Clear active cart for the next customer
+    // Save completed transaction to history
+    this.orderRepository.save(order)
+
     cart.clear()
 
     return order
