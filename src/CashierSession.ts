@@ -5,11 +5,13 @@ import type { DiscountRule } from './Discount.js'
 import type { Inventory } from './Inventory.js'
 import type { Order } from './Order.js'
 import type { Product } from './Product.js'
+import type { ProductCatalog } from './ProductCatalog.js'
 
 export class CashierSession {
   private cart: Cart = new Cart()
 
   constructor(
+    private readonly catalog: ProductCatalog,
     private readonly inventory: Inventory,
     private readonly checkoutService: CheckoutService,
     defaultTaxRate: number = 0,
@@ -18,7 +20,31 @@ export class CashierSession {
     this.cart = new Cart(defaultTaxRate)
   }
 
+  // Helper private agar tidak duplikasi logika cek stok
+  private addProductToCart(product: Product, quantity: number): void {
+    const inventoryItem = this.inventory.getItem(product.id)
+    const availableStock = inventoryItem ? inventoryItem.quantity : 0
+    this.cart.addItem(product, quantity, availableStock)
+  }
+
   // --- OPERASI BARANG ---
+  // Kasir scan barcode fisik (memakai findBySku)
+  scanBarcode(sku: string, quantity: number = 1): void {
+    const product = this.catalog.findBySku(sku)
+    if (!product) throw new Error(`Barcode/SKU "${sku}" not found in catalog.`)
+    this.addProductToCart(product, quantity)
+  }
+
+  // Digunakan saat kasir mengetuk gambar/tombol menu di layar sentuh
+  // (misalnya untuk produk tanpa barcode seperti kopi seduh atau kue di etalase),
+  // di mana UI mengirimkan productId ("P01") lalu dicari lewat catalog.findById(productId).
+  selectProduct(productId: string, quantity: number = 1): void {
+    const product = this.catalog.findById(productId)
+    if (!product)
+      throw new Error(`Product ID "${productId}" not found in catalog.`)
+    this.addProductToCart(product, quantity)
+  }
+
   scanProduct(product: Product, quantity: number): void {
     const inventoryItem = this.inventory.getItem(product.id)
     const availableStock = inventoryItem ? inventoryItem.quantity : 0

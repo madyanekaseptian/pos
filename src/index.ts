@@ -1,71 +1,77 @@
 import { CashierSession } from './CashierSession.js'
 import { CheckoutService } from './CheckoutService.js'
-import { FixedAmountDiscount, PercentageDiscount } from './Discount.js'
 import { Inventory } from './Inventory.js'
 import { OrderRepository } from './OrderRepository.js'
 import { Product } from './Product.js'
+import { ProductCatalog } from './ProductCatalog.js'
 
-// --- SETUP SISTEM TOKO (PAJAK PPN 11%) ---
+// --- 1. INISIALISASI KOMPONEN UTAMA ---
+const catalog = new ProductCatalog()
 const inventory = new Inventory()
 const orderRepo = new OrderRepository()
 const checkoutService = new CheckoutService(inventory, orderRepo)
-const cashier = new CashierSession(inventory, checkoutService, 0.11)
+const cashier = new CashierSession(catalog, inventory, checkoutService, 0.11)
 
-const coffee = new Product('P01', 'Iced Latte', 25000)
-const pastry = new Product('P02', 'Croissant', 30000)
-inventory.restock(coffee, 10)
-inventory.restock(pastry, 10)
+// --- 2. PENDAFTARAN MASTER MENU (ADMIN/OWNER) ---
+const coffee = new Product('P01', 'SKU-001', 'Iced Latte', 25000)
+const pastry = new Product('P02', 'SKU-002', 'Croissant', 30000)
+const water = new Product('P03', 'SKU-003', 'Mineral Water', 8000)
+
+catalog.register(coffee)
+catalog.register(pastry)
+catalog.register(water)
+
+// --- 3. PENGISIAN STOK GUDANG (INVENTORY) ---
+// Bagian gudang bisa mengambil objek produk dari catalog menggunakan findById
+const item1 = catalog.findById('P01')
+const item2 = catalog.findById('P02')
+if (item1) inventory.restock(item1, 10)
+if (item2) inventory.restock(item2, 5)
+// Catatan: P03 (Mineral Water) sengaja belum di-restock (stok = 0)
 
 // =========================================================
-// SKENARIO 1: Diskon Khusus Item + Diskon Total Keranjang
+// TEST 1: Kasir Scan Barcode (Memakai findBySku)
 // =========================================================
-console.log('--- SKENARIO 1: GABUNGAN DISKON ITEM & KERANJANG ---')
+console.log('--- TEST 1: SCAN BARCODE (SKU) ---')
+cashier.scanBarcode('SKU-001', 2) // Scan 2 Iced Latte via barcode
+console.log(
+  'Isi keranjang setelah scan SKU-001:',
+  cashier.getCartItems().length,
+)
 
-// Kasir scan 2 Croissant (60.000) dan 2 Iced Latte (50.000)
-cashier.scanProduct(pastry, 2)
-cashier.scanProduct(coffee, 2)
+// =========================================================
+// TEST 2: Kasir Klik Tombol Layar Sentuh (Memakai findById)
+// =========================================================
+console.log('\n--- TEST 2: SELECT PRODUCT (ID) ---')
+cashier.selectProduct('P02', 1) // Klik tombol Croissant di layar kasir
+console.log('Ringkasan Tagihan:', cashier.getBillSummary())
+// Ekspektasi: Subtotal 80.000 (50rb + 30rb), Pajak 11% = 8.800, Total = 88.800
 
-// Promo Sore: Khusus Croissant diskon 50% (potongan 30.000)
-const clearancePromo = new PercentageDiscount('Evening Clearance 50%', 50)
-cashier.applyItemDiscount('P02', clearancePromo)
-
-// Cek rincian per item di keranjang
-for (const item of cashier.getCartItems()) {
-  console.log(
-    `- ${item.product.name} (${item.quantity}x): Kotor Rp${item.grossSubtotal} | Diskon Item Rp${item.discountAmount} | Bersih Rp${item.subtotal}`,
-  )
+// =========================================================
+// TEST 3: Edge Case Produk Terdaftar di Menu Tapi Stok 0
+// =========================================================
+console.log('\n--- TEST 3: PRODUK ADA DI CATALOG TAPI STOK KOSONG ---')
+try {
+  cashier.scanBarcode('SKU-003', 1) // Mineral Water ada di catalog, tapi stok 0
+} catch (error) {
+  console.log('Ditolak sesuai harapan:', (error as Error).message)
 }
 
-// Tambah Voucher Toko Rp10.000 untuk total belanja
-// Subtotal saat ini = 30.000 (Croissant) + 50.000 (Latte) = 80.000
-const storeVoucher = new FixedAmountDiscount('Voucher Toko 10rb', 10000)
-cashier.applyDiscount(storeVoucher)
-
-// Cek tagihan akhir:
-// Subtotal: 80.000
-// Diskon Keranjang: 10.000 -> Harga Kena Pajak: 70.000
-// Pajak 11% dari 70.000: 7.700
-// Grand Total: 77.700
-console.log('Ringkasan Tagihan:', cashier.getBillSummary())
+// =========================================================
+// TEST 4: Edge Case Barcode / ID Tidak Terdaftar di Menu
+// =========================================================
+console.log('\n--- TEST 4: BARCODE TIDAK DIKENAL ---')
+try {
+  cashier.scanBarcode('SKU-999', 1)
+} catch (error) {
+  console.log('Ditolak sesuai harapan:', (error as Error).message)
+}
 
 // =========================================================
-// SKENARIO 2: Kasir Salah Input Diskon Item & Membatalkannya
+// TEST 5: Checkout & Cek Sisa Stok
 // =========================================================
-console.log('\n--- SKENARIO 2: PEMBATALAN DISKON ITEM ---')
-// Misal promo Croissant dibatalkan (pastikan method removeItemDiscount sudah ada di CashierSession)
-cashier.removeItemDiscount('P02')
-
-// Subtotal kembali menjadi 60.000 + 50.000 = 110.000
-// Diskon Keranjang tetap 10.000 -> Harga Kena Pajak: 100.000
-// Pajak 11% dari 100.000: 11.000 -> Grand Total: 111.000
-console.log('Tagihan Setelah Diskon Item Dihapus:', cashier.getBillSummary())
-
-// =========================================================
-// SKENARIO 3: Checkout & Verifikasi Struk
-// =========================================================
-console.log('\n--- SKENARIO 3: CHECKOUT & CETAK STRUK ---')
-const receipt = cashier.checkout(150000)
-console.log('Order ID:', receipt.id)
-console.log('Grand Total:', receipt.grandTotal) // 111000
-console.log('Kembalian:', receipt.change) // 39000
-console.log('Detail Item di Struk:', receipt.items)
+console.log('\n--- TEST 5: CHECKOUT ---')
+const receipt = cashier.checkout(100000)
+console.log('Order ID:', receipt.id, '| Kembalian:', receipt.change)
+console.log('Sisa stok P01 (Ekspektasi 8):', inventory.getItem('P01')?.quantity)
+console.log('Sisa stok P02 (Ekspektasi 4):', inventory.getItem('P02')?.quantity)
