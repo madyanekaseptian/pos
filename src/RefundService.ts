@@ -1,0 +1,106 @@
+import type { Inventory } from './Inventory.js'
+import type { OrderRepository } from './OrderRepository.js'
+import type { ProductCatalog } from './ProductCatalog.js'
+import { Refund } from './Refund.js'
+import { RefundItem } from './RefundItem.js'
+
+export class RefundService {
+  private refunds: Map<string, Refund> = new Map()
+
+  constructor(
+    private readonly orderRepository: OrderRepository,
+    private readonly inventory: Inventory,
+    private readonly catalog: ProductCatalog,
+  ) {}
+
+  processRefund(
+    orderId: string,
+    returnRequests: {
+      productId: string
+      quantity: number
+      restockable?: boolean
+    }[],
+    reason: string,
+  ): Refund {
+    const order = this.orderRepository.findById(orderId)
+    if (!order) throw new Error(`Order ID "${orderId}" not found.`)
+
+    if (returnRequests.length === 0)
+      throw new Error('Must specify at least one item to refund.')
+
+    const refundItems: RefundItem[] = []
+
+    for (const req of returnRequests) {
+      if (req.quantity <= 0)
+        throw new Error('Refund quantity must be greater than 0.')
+
+      // Cari item di struk asli
+      const purchasedItem = order.items.find(
+        (item) => item.productId === req.productId,
+      )
+      if (!purchasedItem)
+        throw new Error(
+          `Product "${req.productId}" was not part of Order "${orderId}".`,
+        )
+
+      // Hitung berapa yang sudah pernah diretur sebelumnya untuk order & produk ini
+      const alreadyRefundedQty = this.getAlreadyRefundedQuantity(
+        orderId,
+        req.productId,
+      )
+      const maxReturnable = purchasedItem.quantity - alreadyRefundedQty
+
+      if (req.quantity > maxReturnable)
+        throw new Error(
+          `Cannot refund ${req.quantity}x ${purchasedItem.productName}. Maximum returnable is ${maxReturnable}.`,
+        )
+
+      // Hitung harga satuan bersih saat dibeli (memperhitungkan diskon item jika ada)
+      const netUnitPrice = Math.round(
+        purchasedItem.subtotal / purchasedItem.quantity,
+      )
+      const isRestockable = req.restockable ?? true
+
+      refundItems.push(
+        new RefundItem(
+          purchasedItem.productId,
+          purchasedItem.productName,
+          netUnitPrice,
+          req.quantity,
+          isRestockable,
+        ),
+      )
+
+      // Kembalikan stok ke Inventory jika barang masih layak jual
+      if (isRestockable) {
+        const product = this.catalog.findById(req.productId)
+        if (product) this.inventory.restock(product, req.quantity)
+      }
+    }
+
+    const refundId = `REF-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+    const refund = new Refund(refundId, orderId, refundItems, reason)
+    this.refunds.set(refundId, refund)
+
+    return refund
+  }
+
+  // Helper mencegah retur ganda melebihi jumlah beli asli
+  private getAlreadyRefundedQuantity(
+    orderId: string,
+    productId: string,
+  ): number {
+    let total = 0
+    for (const refund of this.refunds.values()) {
+      if (refund.originalOrderId === orderId) {
+        const found = refund.items.find((i) => i.productId === productId)
+        if (found) total += found.quantity
+      }
+    }
+    return total
+  }
+
+  getAllRefunds(): Refund[] {
+    return Array.from(this.refunds.values())
+  }
+}
