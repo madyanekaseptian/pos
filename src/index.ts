@@ -72,3 +72,20 @@ try {
 } catch (e) {
   console.log('Error tertangkap sesuai harapan:', (e as Error).message)
 }
+
+// --- UJI KASUS FLOATING POINT ---
+const coffeeSpecial = new Product('P03', 'Caramel Macchiato', 19900)
+inventory.restock(coffeeSpecial, 10)
+
+// Gunakan pajak PPN 11% (0.11)
+const taxCart = new Cart(0.11)
+taxCart.addItem(coffeeSpecial, 3) // Subtotal = 59.700
+
+const promo = new PercentageDiscount('Promo 15%', 15)
+taxCart.applyDiscount(promo)
+
+console.log('\n--- TEST FLOATING POINT (PPN 11%) ---')
+console.log('Subtotal:', taxCart.subtotal) // 59700
+console.log('Diskon 15%:', taxCart.discountAmount) // 8955
+console.log('Pajak 11%:', taxCart.taxAmount) // Output (Tanpa Round): 5581.950000000001
+console.log('Grand Total:', taxCart.grandTotal) // Output (Tanpa Round): 56326.950000000004

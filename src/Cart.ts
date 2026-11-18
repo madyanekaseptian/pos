@@ -84,12 +84,13 @@ export class Cart {
 
   get discountAmount(): number {
     if (!this.discount) return 0
-    return this.discount.calculateDiscount(this.subtotal)
+    const rawDiscount = this.discount.calculateDiscount(this.subtotal)
+    return Math.round(rawDiscount) // Bulatkan ke Rupiah terdekat
   }
 
   get taxAmount(): number {
     const taxableAmount = this.subtotal - this.discountAmount
-    return taxableAmount * this.taxRate
+    return Math.round(taxableAmount * this.taxRate) // Bulatkan ke Rupiah terdekat
   }
 
   get grandTotal(): number {
