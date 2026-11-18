@@ -7,8 +7,6 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "npx tsx watch src/index",
-    "dev2": "npx tsx watch src/index2",
-    "dev3": "npx tsx watch src/index3"
+    "dev": "npx tsx watch src/index"
   }
 }
