@@ -23,6 +23,15 @@ export class ProductCatalog {
     return this.skuIndex.get(sku)
   }
 
+  searchByName(keyword: string): Product[] {
+    const normalized = keyword.trim().toLowerCase()
+    if (!normalized) return this.getAllProducts()
+
+    return this.getAllProducts().filter((product) =>
+      product.name.toLowerCase().includes(normalized),
+    )
+  }
+
   getAllProducts(): Product[] {
     return Array.from(this.products.values())
   }
