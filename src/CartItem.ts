@@ -12,7 +12,7 @@ export class CartItem {
     return this._quantity
   }
 
-  get subTotal(): number {
+  get subtotal(): number {
     return this.product.price * this._quantity
   }
 

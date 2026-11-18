@@ -53,7 +53,7 @@ export class Cart {
   get totalAmount(): number {
     let total = 0
     for (const item of this.items.values()) {
-      total += item.subTotal
+      total += item.subtotal
     }
     return total
   }
@@ -77,7 +77,7 @@ export class Cart {
   get subtotal(): number {
     let total = 0
     for (const item of this.items.values()) {
-      total += item.subTotal
+      total += item.subtotal
     }
     return total
   }

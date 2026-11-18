@@ -1,7 +1,7 @@
 // 1. Discount Strategy (Interface & Implementations)
 export interface DiscountRule {
   readonly name: string
-  calculateDiscount(subTotal: number): number
+  calculateDiscount(subtotal: number): number
 }
 
 export class PercentageDiscount implements DiscountRule {
@@ -13,8 +13,8 @@ export class PercentageDiscount implements DiscountRule {
       throw new Error('Discount percentage must be between 0 and 100.')
   }
 
-  calculateDiscount(subTotal: number): number {
-    return (subTotal * this.percentage) / 100
+  calculateDiscount(subtotal: number): number {
+    return (subtotal * this.percentage) / 100
   }
 }
 
@@ -26,8 +26,8 @@ export class FixedAmountDiscount implements DiscountRule {
     if (amount < 0) throw new Error('Discount amount cannot be negative.')
   }
 
-  calculateDiscount(subTotal: number): number {
+  calculateDiscount(subtotal: number): number {
     // Discount cannot exceed the subtotal
-    return Math.min(subTotal, this.amount)
+    return Math.min(subtotal, this.amount)
   }
 }
