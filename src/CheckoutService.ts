@@ -16,10 +16,10 @@ export class CheckoutService {
       throw new Error('Cannot checkout an empty cart.')
     }
 
-    const totalAmount = cart.totalAmount
-    if (amountPaid < totalAmount) {
+    const grandTotal = cart.grandTotal
+    if (amountPaid < grandTotal) {
       throw new Error(
-        `Insufficient payment. Total is ${totalAmount}, but paid ${amountPaid}.`,
+        `Insufficient payment. Grand total is ${grandTotal}, but paid ${amountPaid}.`,
       )
     }
 
@@ -45,7 +45,15 @@ export class CheckoutService {
 
     // Generate Order receipt
     const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`
-    const order = new Order(orderId, orderItems, totalAmount, amountPaid)
+    const order = new Order(
+      orderId,
+      orderItems,
+      cart.subtotal,
+      cart.discountAmount,
+      cart.taxAmount,
+      grandTotal,
+      amountPaid,
+    )
 
     // Save completed transaction to history
     this.orderRepository.save(order)

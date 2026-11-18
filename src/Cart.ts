@@ -1,8 +1,16 @@
 import { CartItem } from './CartItem.js'
+import type { DiscountRule } from './Discount.js'
 import type { Product } from './Product.js'
 
 export class Cart {
   private items: Map<string, CartItem> = new Map()
+  private discount: DiscountRule | null = null
+  private taxRate: number = 0 // e.g., 0.11 for 11%
+
+  constructor(taxRate: number = 0) {
+    if (taxRate < 0) throw new Error('Tax rate cannot be negative.')
+    this.taxRate = taxRate
+  }
 
   addItem(
     product: Product,
@@ -58,7 +66,39 @@ export class Cart {
     return Array.from(this.items.values())
   }
 
+  applyDiscount(discount: DiscountRule): void {
+    this.discount = discount
+  }
+
+  removeDiscount(): void {
+    this.discount = null
+  }
+
+  get subtotal(): number {
+    let total = 0
+    for (const item of this.items.values()) {
+      total += item.subTotal
+    }
+    return total
+  }
+
+  get discountAmount(): number {
+    if (!this.discount) return 0
+    return this.discount.calculateDiscount(this.subtotal)
+  }
+
+  get taxAmount(): number {
+    const taxableAmount = this.subtotal - this.discountAmount
+    return taxableAmount * this.taxRate
+  }
+
+  get grandTotal(): number {
+    const taxableAmount = this.subtotal - this.discountAmount
+    return taxableAmount + this.taxAmount
+  }
+
   clear(): void {
     this.items.clear()
+    this.discount = null // Reset discount for the next customer
   }
 }

@@ -1,28 +1,74 @@
-import { CashierSession } from './CashierSession.js'
+/**
+  UJI SKENARIO:
+  • Kasus 1 (Normal dengan Persentase & Pajak): Memastikan urutan Subtotal -> Diskon % -> Pajak menghasilkan angka yang presisi.
+  • Kasus 2 (Diskon Nominal Melebihi Subtotal): Memastikan jika pelanggan memakai voucher Rp50.000 untuk belanjaan Rp30.000, grandTotal berhenti di 0 (tidak menjadi minus).
+  • Kasus 3 (Reset Otomatis Setelah Checkout): Memastikan setelah transaksi pertama selesai, promo diskon otomatis terhapus (null) sehingga tidak terbawa ke transaksi pelanggan berikutnya.
+  • Kasus 4 (Validasi Input Tidak Valid): Memastikan sistem menolak diskon di atas 100% atau nilai negatif.
+*/
+
+import { Cart } from './Cart.js'
 import { CheckoutService } from './CheckoutService.js'
+import { FixedAmountDiscount, PercentageDiscount } from './Discount.js'
 import { Inventory } from './Inventory.js'
 import { OrderRepository } from './OrderRepository.js'
 import { Product } from './Product.js'
 
+// --- SETUP SISTEM ---
 const inventory = new Inventory()
 const orderRepo = new OrderRepository()
 const checkoutService = new CheckoutService(inventory, orderRepo)
-const cashier = new CashierSession(inventory, checkoutService)
 
-const mouse = new Product('P01', 'Logitech M650', 500000)
-inventory.restock(mouse, 3)
+const coffee = new Product('P01', 'Iced Latte', 25000)
+const pastry = new Product('P02', 'Croissant', 50000)
+inventory.restock(coffee, 20)
+inventory.restock(pastry, 20)
 
-// Kasir scan 2 mouse ->  Berhasil
-cashier.scanProduct(mouse, 2)
+// Inisialisasi Cart dengan Pajak 10% (0.1)
+const cart = new Cart(0.1)
 
-// Kasir menekan tombol "+" 2 kali lagi (total diminta jadi 4, padahal stok 3)
+// ==========================================
+// TEST 1: Perhitungan Normal (Diskon % + Pajak)
+// ==========================================
+cart.addItem(coffee, 2) // 50.000
+cart.addItem(pastry, 1) // 50.000 -> Subtotal = 100.000
+
+const promoOpening = new PercentageDiscount('Grand Opening 20%', 20)
+cart.applyDiscount(promoOpening)
+
+console.log('--- TEST 1: NORMAL CALCULATION ---')
+console.log('Subtotal (Ekspektasi 100000):', cart.subtotal)
+console.log('Diskon (Ekspektasi 20000):', cart.discountAmount)
+console.log('Pajak 10% (Ekspektasi 8000):', cart.taxAmount)
+console.log('Grand Total (Ekspektasi 88000):', cart.grandTotal)
+
+const receipt1 = checkoutService.processCheckout(cart, 100000)
+console.log('Kembalian Struk 1 (Ekspektasi 12000):', receipt1.change)
+
+// ==========================================
+// TEST 2: Reset Diskon & Edge Case Voucher Lebih Besar dari Belanja
+// ==========================================
+console.log('\n--- TEST 2: RESET & EDGE CASE VOUCHER ---')
+// Pastikan diskon dari Pelanggan 1 sudah hilang
+console.log('Diskon awal pelanggan 2 (Ekspektasi 0):', cart.discountAmount)
+
+cart.addItem(coffee, 1) // Subtotal = 25.000
+const bigVoucher = new FixedAmountDiscount('Voucher Sultan 50rb', 50000)
+cart.applyDiscount(bigVoucher)
+
+console.log('Subtotal (Ekspektasi 25000):', cart.subtotal)
+console.log('Diskon Terpakai (Ekspektasi 25000):', cart.discountAmount)
+console.log('Pajak (Ekspektasi 0):', cart.taxAmount)
+console.log('Grand Total (Ekspektasi 0):', cart.grandTotal)
+
+const receipt2 = checkoutService.processCheckout(cart, 0)
+console.log('Struk 2 sukses dengan total:', receipt2.grandTotal)
+
+// ==========================================
+// TEST 3: Validasi Error Input
+// ==========================================
+console.log('\n--- TEST 3: ERROR VALIDATION ---')
 try {
-  cashier.scanProduct(mouse, 2)
-} catch (error) {
-  console.error((error as Error).message)
-  // Output: Cannot add 2x Logitech M650. Only 3 left in stock (already have 2 in cart).
+  new PercentageDiscount('Diskon Ngaco', 150)
+} catch (e) {
+  console.log('Error tertangkap sesuai harapan:', (e as Error).message)
 }
-
-// Kasir menekan tombol "+" 1 kali saja (total jadi 3) -> Berhasil
-cashier.scanProduct(mouse, 1)
-console.log('Total keranjang:', cashier.getCartTotal()) // Output: 1500000
