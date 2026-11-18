@@ -43,6 +43,14 @@ export class CashierSession {
     this.cart.removeDiscount()
   }
 
+  applyItemDiscount(productId: string, discount: DiscountRule): void {
+    this.cart.applyItemDiscount(productId, discount)
+  }
+
+  removeItemDiscount(productId: string): void {
+    this.cart.removeItemDiscount(productId)
+  }
+
   // --- INFORMASI LAYAR KASIR ---
   getCartItems(): CartItem[] {
     return this.cart.getAllItems()

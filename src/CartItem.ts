@@ -1,6 +1,9 @@
+import type { DiscountRule } from './Discount.js'
 import type { Product } from './Product.js'
 
 export class CartItem {
+  private discount: DiscountRule | null = null
+
   constructor(
     public readonly product: Product,
     private _quantity = 1,
@@ -12,8 +15,28 @@ export class CartItem {
     return this._quantity
   }
 
-  get subtotal(): number {
+  // Harga kotor sebelum diskon item
+  get grossSubtotal(): number {
     return this.product.price * this._quantity
+  }
+
+  // Nominal potongan diskon khusus item ini
+  get discountAmount(): number {
+    if (!this.discount) return 0
+    return Math.round(this.discount.calculateDiscount(this.grossSubtotal))
+  }
+
+  // Harga bersih baris ini setelah diskon item
+  get subtotal(): number {
+    return this.grossSubtotal - this.discountAmount
+  }
+
+  applyDiscount(discount: DiscountRule): void {
+    this.discount = discount
+  }
+
+  removeDiscount(): void {
+    this.discount = null
   }
 
   increaseQuantity(amount: number = 1): void {

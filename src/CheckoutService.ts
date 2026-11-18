@@ -40,6 +40,7 @@ export class CheckoutService {
             item.product.name,
             item.product.price,
             item.quantity,
+            item.discountAmount,
           ),
       )
 

@@ -74,6 +74,17 @@ export class Cart {
     this.discount = null
   }
 
+  applyItemDiscount(productId: string, discount: DiscountRule): void {
+    const item = this.items.get(productId)
+    if (!item) throw new Error(`Product ${productId} is not in the cart.`)
+    item.applyDiscount(discount)
+  }
+
+  removeItemDiscount(productId: string): void {
+    const item = this.items.get(productId)
+    if (item) item.removeDiscount()
+  }
+
   get subtotal(): number {
     let total = 0
     for (const item of this.items.values()) {
