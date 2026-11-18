@@ -25,11 +25,9 @@ export class ProductCatalog {
   }
 
   searchByName(keyword: string): Product[] {
-    const normalized = keyword.trim().toLowerCase()
-    if (!normalized) return this.getAllProducts()
-
+    const query = keyword.trim().toLowerCase()
     return this.getAllProducts().filter((product) =>
-      product.name.toLowerCase().includes(normalized),
+      product.name.toLowerCase().includes(query),
     )
   }
 
