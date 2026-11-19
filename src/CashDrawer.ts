@@ -13,7 +13,7 @@ interface CashLog {
   readonly reference: string
 }
 
-interface CashDrawerClosingReport {
+export interface CashDrawerClosingReport {
   readonly expectedCash: number
   readonly actualCash: number
   readonly discrepancy: number

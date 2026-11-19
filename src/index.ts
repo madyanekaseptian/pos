@@ -1,57 +1,60 @@
-import { CashDrawer } from './CashDrawer.js'
+import { PosSystem } from './PosSystem.js'
+import { User } from './User.js'
 
-const drawer = new CashDrawer()
+const pos = new PosSystem({ taxRate: 0.1 }) // Pajak 10%
+pos.addProduct('P01', 'SKU-001', 'Iced Latte', 20000, 10)
+
+const andi = new User('U01', 'Andi', 'CASHIER')
+const budi = new User('U02', 'Budi', 'CASHIER')
 
 // =========================================================
-// TEST 1: Proteksi Operasi Saat Laci Masih Tertutup
+// TEST 1: Transaksi Ditolak Jika Belum Buka Shift
 // =========================================================
-console.log('--- TEST 1: LACI TERTUTUP ---')
+console.log('--- TEST 1: BELUM BUKA SHIFT ---')
 try {
-  drawer.recordSale(50000, 'ORD-001')
+  pos.cashier.scanBarcode('SKU-001', 1)
+  pos.cashier.checkout(25000)
 } catch (error) {
   console.log('Ditolak sesuai harapan:', (error as Error).message)
 }
 
 // =========================================================
-// TEST 2: Buka Laci & Alur Arus Kas Masuk/Keluar
+// TEST 2: Andi Buka Shift Pagi (Modal Rp500.000)
 // =========================================================
-console.log('\n--- TEST 2: BUKA LACI & ARUS KAS ---')
-drawer.open(500000) // Modal awal kembalian: Rp500.000
-console.log('Saldo Awal (Ekspektasi 500000):', drawer.currentBalance)
+console.log('\n--- TEST 2: ANDI BUKA SHIFT & TRANSAKSI ---')
+pos.shift.openShift(andi, 500000)
 
-drawer.recordSale(75000, 'ORD-001') // Penjualan masuk +75.000 -> 575.000
-drawer.recordSale(125000, 'ORD-002') // Penjualan masuk +125.000 -> 700.000
-drawer.removeCash(20000, 'Beli plastik & galon') // Kas keluar -20.000 -> 680.000
-drawer.recordRefund(30000, 'REF-001') // Refund tunai -30.000 -> 650.000
-drawer.addCash(100000, 'Tambah receh pecahan') // Kas masuk +100.000 -> 750.000
+pos.cashier.scanBarcode('SKU-001', 1) // Tambah 1 lagi (total di keranjang jadi 2 Latte = 44.000)
 
-console.log('Saldo Akhir Sistem (Ekspektasi 750000):', drawer.currentBalance)
-
-// =========================================================
-// TEST 3: Proteksi Saldo Kurang Saat Refund
-// =========================================================
-console.log('\n--- TEST 3: PROTEKSI SALDO LACI TIDAK CUKUP ---')
-try {
-  drawer.recordRefund(900000, 'REF-999') // Saldo cuma 750rb, tapi mau refund 900rb
-} catch (error) {
-  console.log('Ditolak sesuai harapan:', (error as Error).message)
-}
-
-// =========================================================
-// TEST 4: Tutup Laci & Cek Selisih Kas (Discrepancy)
-// =========================================================
-console.log('\n--- TEST 4: TUTUP LACI (SIMULASI UANG FISIK KURANG RP5.000) ---')
-// Catatan sistem = 750.000, tapi kasir menghitung uang fisik di laci cuma ada 745.000
-const closingReport = drawer.close(745000)
-
-console.log('Expected Cash (Ekspektasi 750000):', closingReport.expectedCash)
-console.log('Actual Cash (Ekspektasi 745000):', closingReport.actualCash)
+// Beli 2 Latte = 40.000 + Pajak 10% (4.000) = 44.000
+const order = pos.cashier.checkout(50000)
 console.log(
-  'Discrepancy / Selisih (Ekspektasi -5000):',
-  closingReport.discrepancy,
+  'Saldo Laci Setelah Jual (Ekspektasi 544000):',
+  pos.shift.drawer.currentBalance,
 )
-console.log('Status Laci Sekarang (Ekspektasi false):', drawer.isOpen)
+
+// Retur 1 Latte = 20.000 + Pajak 10% (2.000) = 22.000
+pos.processRefund(order.id, [{ productId: 'P01', quantity: 1 }], 'Wrong order')
 console.log(
-  'Jumlah Riwayat Log Mutasi (Ekspektasi 6):',
-  closingReport.logs.length,
+  'Saldo Laci Setelah Refund (Ekspektasi 522000):',
+  pos.shift.drawer.currentBalance,
+)
+
+// =========================================================
+// TEST 3: Tutup Shift Andi & Ganti Shift Budi
+// =========================================================
+console.log('\n--- TEST 3: TUTUP SHIFT ANDI ---')
+const summaryAndi = pos.shift.closeShift(522000) // Uang fisik pas 522.000
+console.log('Kasir Bertugas (Ekspektasi Andi):', summaryAndi.cashier.name)
+console.log('Selisih Kas (Ekspektasi 0):', summaryAndi.drawerReport.discrepancy)
+
+// Budi sekarang bisa membuka shift sore
+pos.shift.openShift(budi, 300000)
+console.log(
+  'Shift Aktif Sekarang (Ekspektasi Budi):',
+  pos.shift.activeCashier?.name,
+)
+console.log(
+  'Total Riwayat Shift Selesai (Ekspektasi 1):',
+  pos.shift.getClosedShifts().length,
 )

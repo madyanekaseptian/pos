@@ -3,6 +3,7 @@ import type { OrderRepository } from './OrderRepository.js'
 import type { ProductCatalog } from './ProductCatalog.js'
 import { Refund } from './Refund.js'
 import { RefundItem } from './RefundItem.js'
+import type { ShiftSession } from './ShiftSession.js'
 
 export class RefundService {
   private refunds: Map<string, Refund> = new Map()
@@ -11,6 +12,7 @@ export class RefundService {
     private readonly orderRepository: OrderRepository,
     private readonly inventory: Inventory,
     private readonly catalog: ProductCatalog,
+    private readonly shiftSession: ShiftSession,
   ) {}
 
   processRefund(
@@ -22,6 +24,8 @@ export class RefundService {
     }[],
     reason: string,
   ): Refund {
+    this.shiftSession.ensureActiveShift()
+
     const order = this.orderRepository.findById(orderId)
     if (!order) throw new Error(`Order ID "${orderId}" not found.`)
 
@@ -92,6 +96,7 @@ export class RefundService {
     const refundId = `REF-${Date.now()}-${Math.floor(Math.random() * 1000)}`
     const refund = new Refund(refundId, orderId, refundItems, reason)
     this.refunds.set(refundId, refund)
+    this.shiftSession.drawer.recordRefund(refund.totalRefundAmount, refundId)
 
     return refund
   }

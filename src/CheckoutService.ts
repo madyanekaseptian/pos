@@ -3,15 +3,19 @@ import type { Inventory } from './Inventory.js'
 import { Order } from './Order.js'
 import { OrderItem } from './OrderItem.js'
 import type { OrderRepository } from './OrderRepository.js'
+import type { ShiftSession } from './ShiftSession.js'
 
 // Orchestrator for the Checkout Process
 export class CheckoutService {
   constructor(
     private readonly inventory: Inventory,
     private readonly orderRepository: OrderRepository,
+    private shiftSession: ShiftSession,
   ) {}
 
   processCheckout(cart: Cart, amountPaid: number): Order {
+    this.shiftSession.ensureActiveShift()
+
     if (cart.isEmpty) {
       throw new Error('Cannot checkout an empty cart.')
     }
@@ -57,6 +61,7 @@ export class CheckoutService {
     )
 
     // Save completed transaction to history
+    this.shiftSession.drawer.recordSale(grandTotal, orderId)
     this.orderRepository.save(order)
 
     cart.clear()

@@ -6,6 +6,7 @@ import { Product } from './Product.js'
 import { ProductCatalog } from './ProductCatalog.js'
 import type { Refund } from './Refund.js'
 import { RefundService } from './RefundService.js'
+import { ShiftSession } from './ShiftSession.js'
 
 interface PosConfig {
   taxRate?: number
@@ -15,6 +16,7 @@ export class PosSystem {
   public readonly catalog: ProductCatalog
   public readonly inventory: Inventory
   public readonly orders: OrderRepository
+  public readonly shift: ShiftSession
   public readonly cashier: CashierTerminal
 
   private readonly checkoutService: CheckoutService
@@ -27,11 +29,17 @@ export class PosSystem {
     this.catalog = new ProductCatalog()
     this.inventory = new Inventory()
     this.orders = new OrderRepository()
-    this.checkoutService = new CheckoutService(this.inventory, this.orders)
+    this.shift = new ShiftSession()
+    this.checkoutService = new CheckoutService(
+      this.inventory,
+      this.orders,
+      this.shift,
+    )
     this.refundService = new RefundService(
       this.orders,
       this.inventory,
       this.catalog,
+      this.shift,
     )
     this.cashier = new CashierTerminal(
       this.catalog,
