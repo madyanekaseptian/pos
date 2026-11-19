@@ -1,46 +1,57 @@
-import { PercentageDiscount } from './Discount.js'
-import { PosSystem } from './PosSystem.js'
+import { CashDrawer } from './CashDrawer.js'
 
-const pos = new PosSystem({ taxRate: 0.11 })
+const drawer = new CashDrawer()
 
-pos.addProduct('P01', 'SKU-001', 'Iced Latte', 25000, 10)
-pos.addProduct('P02', 'SKU-002', 'Croissant', 30000, 10)
+// =========================================================
+// TEST 1: Proteksi Operasi Saat Laci Masih Tertutup
+// =========================================================
+console.log('--- TEST 1: LACI TERTUTUP ---')
+try {
+  drawer.recordSale(50000, 'ORD-001')
+} catch (error) {
+  console.log('Ditolak sesuai harapan:', (error as Error).message)
+}
 
-// Beli 2 Latte (50rb) + 1 Croissant (30rb) = Subtotal 80rb
-// Diskon Keranjang 10% (-8rb) -> 72rb + Pajak 11% (+7.920) -> Grand Total = 79.920
-pos.cashier.scanBarcode('SKU-001', 2)
-pos.cashier.selectProduct('P02', 1)
-pos.cashier.applyDiscount(new PercentageDiscount('Opening Promo', 10))
+// =========================================================
+// TEST 2: Buka Laci & Alur Arus Kas Masuk/Keluar
+// =========================================================
+console.log('\n--- TEST 2: BUKA LACI & ARUS KAS ---')
+drawer.open(500000) // Modal awal kembalian: Rp500.000
+console.log('Saldo Awal (Ekspektasi 500000):', drawer.currentBalance)
 
-const order = pos.cashier.checkout(100000)
+drawer.recordSale(75000, 'ORD-001') // Penjualan masuk +75.000 -> 575.000
+drawer.recordSale(125000, 'ORD-002') // Penjualan masuk +125.000 -> 700.000
+drawer.removeCash(20000, 'Beli plastik & galon') // Kas keluar -20.000 -> 680.000
+drawer.recordRefund(30000, 'REF-001') // Refund tunai -30.000 -> 650.000
+drawer.addCash(100000, 'Tambah receh pecahan') // Kas masuk +100.000 -> 750.000
+
+console.log('Saldo Akhir Sistem (Ekspektasi 750000):', drawer.currentBalance)
+
+// =========================================================
+// TEST 3: Proteksi Saldo Kurang Saat Refund
+// =========================================================
+console.log('\n--- TEST 3: PROTEKSI SALDO LACI TIDAK CUKUP ---')
+try {
+  drawer.recordRefund(900000, 'REF-999') // Saldo cuma 750rb, tapi mau refund 900rb
+} catch (error) {
+  console.log('Ditolak sesuai harapan:', (error as Error).message)
+}
+
+// =========================================================
+// TEST 4: Tutup Laci & Cek Selisih Kas (Discrepancy)
+// =========================================================
+console.log('\n--- TEST 4: TUTUP LACI (SIMULASI UANG FISIK KURANG RP5.000) ---')
+// Catatan sistem = 750.000, tapi kasir menghitung uang fisik di laci cuma ada 745.000
+const closingReport = drawer.close(745000)
+
+console.log('Expected Cash (Ekspektasi 750000):', closingReport.expectedCash)
+console.log('Actual Cash (Ekspektasi 745000):', closingReport.actualCash)
 console.log(
-  'Grand Total Dibayar Pelanggan (Ekspektasi 79920):',
-  order.grandTotal,
+  'Discrepancy / Selisih (Ekspektasi -5000):',
+  closingReport.discrepancy,
 )
-
-// Retur Tahap 1: Retur 1 Croissant
-// Harga efektif Croissant: 30.000 - 3.000 (diskon 10%) + 2.970 (pajak 11%) = 29.970
-const refund1 = pos.processRefund(
-  order.id,
-  [{ productId: 'P02', quantity: 1 }],
-  'Wrong pastry',
-)
+console.log('Status Laci Sekarang (Ekspektasi false):', drawer.isOpen)
 console.log(
-  'Refund 1 - Croissant (Ekspektasi 29970):',
-  refund1.totalRefundAmount,
-)
-
-// Retur Tahap 2: Retur sisa 2 Iced Latte
-// Harga efektif 2 Latte: 50.000 - 5.000 (diskon 10%) + 4.950 (pajak 11%) = 49.950
-const refund2 = pos.processRefund(
-  order.id,
-  [{ productId: 'P01', quantity: 2 }],
-  'Cancelled drinks',
-)
-console.log('Refund 2 - 2 Latte (Ekspektasi 49950):', refund2.totalRefundAmount)
-
-// Verifikasi Akhir: Total semua refund harus 0 rupiah selisih dengan Grand Total!
-console.log(
-  'Laporan Akhir Toko (Ekspektasi netRevenue: 0):',
-  pos.getStoreSummary(),
+  'Jumlah Riwayat Log Mutasi (Ekspektasi 6):',
+  closingReport.logs.length,
 )
