@@ -19,7 +19,7 @@ export class OrderRepository {
   getTotalRevenue(): number {
     let total = 0
     for (const order of this.orders.values()) {
-      total += order.totalAmount
+      total += order.grandTotal
     }
     return total
   }
