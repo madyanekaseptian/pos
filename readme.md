@@ -69,3 +69,208 @@ Seluruh komponen di dalam repositori ini dibagi berdasarkan peran bisnis yang sp
    ShiftSession.closeShift(uangFisik) ──► CashDrawer menghitung selisih kas (Discrepancy)
 
 ```
+
+## 3. Diagram UML Class
+
+```mermaid
+classDiagram
+    %% Facade Layer
+    class PosSystem {
+        +ProductCatalog catalog
+        +Inventory inventory
+        +OrderRepository orders
+        +ShiftSession shift
+        +CashierTerminal cashier
+        +addProduct() Product
+        +restockProduct() void
+        +processRefund() Refund
+        +getStoreSummary() Object
+    }
+
+    %% Catalog & Inventory
+    class Product {
+        +string id
+        +string sku
+        +string name
+        +number price
+    }
+
+    class ProductCatalog {
+        -Map~string, Product~ products
+        +register(Product) void
+        +findById(string) Product
+        +findBySku(string) Product
+        +searchByName(string) Product[]
+        +getAllProducts() Product[]
+    }
+
+    class Inventory {
+        -Map~string, InventoryItem~ items
+        +restock(Product, number) void
+        +deduct(string, number) void
+        +getItem(string) InventoryItem
+    }
+
+    class InventoryItem {
+        +Product product
+        +number quantity
+    }
+
+    %% Cashier & Cart
+    class CashierTerminal {
+        -Cart cart
+        +scanBarcode(string, number) void
+        +selectProduct(string, number) void
+        +decreaseProduct(string, number) void
+        +applyDiscount(DiscountRule) void
+        +applyItemDiscount(string, DiscountRule) void
+        +getBillSummary() BillSummary
+        +checkout(number) Order
+    }
+
+    class Cart {
+        -Map~string, CartItem~ items
+        -DiscountRule discount
+        -number taxRate
+        +subtotal number
+        +discountAmount number
+        +taxAmount number
+        +grandTotal number
+        +addItem(Product, number, number) void
+        +clear() void
+    }
+
+    class CartItem {
+        +Product product
+        -DiscountRule discount
+        +quantity number
+        +subtotal number
+        +discountAmount number
+    }
+
+    class DiscountRule {
+        <<interface>>
+        +string name
+        +calculateDiscount(number) number
+    }
+
+    class PercentageDiscount {
+        +string name
+        -number percentage
+        +calculateDiscount(number) number
+    }
+
+    class FixedAmountDiscount {
+        +string name
+        -number amount
+        +calculateDiscount(number) number
+    }
+
+    %% Checkout, Order & Refund
+    class CheckoutService {
+        +processCheckout(Cart, number) Order
+    }
+
+    class OrderRepository {
+        -Map~string, Order~ orders
+        +save(Order) void
+        +findById(string) Order
+        +getTotalRevenue() number
+    }
+
+    class Order {
+        +string id
+        +OrderItem[] items
+        +number subtotal
+        +number discountAmount
+        +number taxAmount
+        +number grandTotal
+        +number amountPaid
+        +number change
+    }
+
+    class RefundService {
+        -Map~string, Refund~ refunds
+        +processRefund(string, Array, string) Refund
+    }
+
+    class Refund {
+        +string id
+        +string originalOrderId
+        +RefundItem[] items
+        +number totalRefundAmount
+        +string reason
+    }
+
+    %% Shift, User & CashDrawer
+    class User {
+        +string id
+        +string name
+        +UserRole role
+        +isManager() boolean
+    }
+
+    class ShiftSession {
+        +CashDrawer drawer
+        -User currentUser
+        +isActive boolean
+        +openShift(User, number) void
+        +ensureActiveShift() User
+        +closeShift(number) ShiftSummary
+    }
+
+    class CashDrawer {
+        -boolean _isOpen
+        -number _currentBalance
+        +open(number) void
+        +recordSale(number, string) void
+        +recordRefund(number, string) void
+        +close(number) CashDrawerClosingReport
+    }
+
+    %% Relationships
+    PosSystem *-- ProductCatalog
+    PosSystem *-- Inventory
+    PosSystem *-- OrderRepository
+    PosSystem *-- ShiftSession
+    PosSystem *-- CashierTerminal
+    PosSystem *-- CheckoutService
+    PosSystem *-- RefundService
+
+    ProductCatalog o-- Product
+    Inventory *-- InventoryItem
+    InventoryItem --> Product
+
+    CashierTerminal *-- Cart
+    CashierTerminal --> ProductCatalog
+    CashierTerminal --> Inventory
+    CashierTerminal --> CheckoutService
+
+    Cart *-- CartItem
+    Cart --> DiscountRule
+    CartItem --> Product
+    CartItem --> DiscountRule
+    DiscountRule <|.. PercentageDiscount
+    DiscountRule <|.. FixedAmountDiscount
+
+    CheckoutService --> Inventory
+    CheckoutService --> OrderRepository
+    CheckoutService --> ShiftSession
+    CheckoutService ..> Order : creates
+
+    RefundService --> OrderRepository
+    RefundService --> Inventory
+    RefundService --> ProductCatalog
+    RefundService --> ShiftSession
+    RefundService ..> Refund : creates
+
+    ShiftSession *-- CashDrawer
+    ShiftSession --> User
+```
+
+### Panduan Singkat Simbol Garis pada Diagram
+
+- **`*--`** **(Komposisi)**: Kelas utama memiliki dan bertanggung jawab penuh atas siklus hidup kelas bagiannya (misalnya `PosSystem` merakit `ShiftSession`, dan `ShiftSession` memiliki `CashDrawer`).
+- **`o--`** / **`-->`** **(Agregasi / Asosiasi)**: Kelas saling berinteraksi atau menyimpan referensi tanpa memiliki siklus hidupnya secara eksklusif (misalnya `CartItem` merujuk ke `Product`).
+- **`<|..`** **(Implementasi Interface)**: `PercentageDiscount` dan `FixedAmountDiscount` mengimplementasikan kontrak `DiscountRule`.
+- **`..>`** **(Dependensi / Membuat Objek)**: `CheckoutService` menghasilkan objek `Order`, dan `RefundService` menghasilkan objek `Refund`.
