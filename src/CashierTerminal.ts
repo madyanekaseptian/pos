@@ -7,6 +7,13 @@ import type { Order } from './Order.js'
 import type { Product } from './Product.js'
 import type { ProductCatalog } from './ProductCatalog.js'
 
+export interface BillSummary {
+  subtotal: number
+  discount: number
+  tax: number
+  grandTotal: number
+}
+
 export class CashierTerminal {
   private cart: Cart = new Cart()
 
@@ -75,7 +82,7 @@ export class CashierTerminal {
     return this.cart.getAllItems()
   }
 
-  getBillSummary(): Record<string, number> {
+  getBillSummary(): BillSummary {
     return {
       subtotal: this.cart.subtotal,
       discount: this.cart.discountAmount,
