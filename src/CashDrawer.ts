@@ -13,6 +13,13 @@ interface CashLog {
   readonly reference: string
 }
 
+interface CashDrawerClosingReport {
+  readonly expectedCash: number
+  readonly actualCash: number
+  readonly discrepancy: number
+  readonly logs: readonly CashLog[]
+}
+
 export class CashDrawer {
   private _isOpen: boolean = false
   private _currentBalance: number = 0
@@ -85,7 +92,7 @@ export class CashDrawer {
   }
 
   // 5. Tutup laci & hitung selisih uang fisik vs catatan sistem
-  close(actualPhysicalCash: number) {
+  close(actualPhysicalCash: number): CashDrawerClosingReport {
     this.ensureOpen()
     if (actualPhysicalCash < 0)
       throw new Error('Actual physical cash cannot be negative.')
