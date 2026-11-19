@@ -55,17 +55,28 @@ export class RefundService {
           `Cannot refund ${req.quantity}x ${purchasedItem.productName}. Maximum returnable is ${maxReturnable}.`,
         )
 
-      // Hitung harga satuan bersih saat dibeli (memperhitungkan diskon item jika ada)
-      const netUnitPrice = Math.round(
-        purchasedItem.subtotal / purchasedItem.quantity,
+      // --- PERHITUNGAN PRORATA (DISKON KERANJANG & PAJAK) ---
+      const itemRatio =
+        order.subtotal > 0 ? purchasedItem.subtotal / order.subtotal : 0
+      const proratedOrderDiscount = order.discountAmount * itemRatio
+      const proratedTax = order.taxAmount * itemRatio
+
+      // Total nilai efektif yang dibayar pelanggan untuk seluruh kuantitas item ini
+      const effectiveTotalPaidForItem =
+        purchasedItem.subtotal - proratedOrderDiscount + proratedTax
+
+      // Harga efektif per 1 unit barang
+      const proratedUnitPrice = Math.round(
+        effectiveTotalPaidForItem / purchasedItem.quantity,
       )
+
       const isRestockable = req.restockable ?? true
 
       refundItems.push(
         new RefundItem(
           purchasedItem.productId,
           purchasedItem.productName,
-          netUnitPrice,
+          proratedUnitPrice,
           req.quantity,
           isRestockable,
         ),
