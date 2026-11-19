@@ -1,4 +1,4 @@
-import { CashierSession } from './CashierSession.js'
+import { CashierTerminal } from './CashierTerminal.js'
 import { CheckoutService } from './CheckoutService.js'
 import { Inventory } from './Inventory.js'
 import { OrderRepository } from './OrderRepository.js'
@@ -15,7 +15,7 @@ export class PosSystem {
   public readonly catalog: ProductCatalog
   public readonly inventory: Inventory
   public readonly orders: OrderRepository
-  public readonly cashier: CashierSession
+  public readonly cashier: CashierTerminal
 
   private readonly checkoutService: CheckoutService
   private readonly refundService: RefundService
@@ -33,7 +33,7 @@ export class PosSystem {
       this.inventory,
       this.catalog,
     )
-    this.cashier = new CashierSession(
+    this.cashier = new CashierTerminal(
       this.catalog,
       this.inventory,
       this.checkoutService,

@@ -7,7 +7,7 @@ import type { Order } from './Order.js'
 import type { Product } from './Product.js'
 import type { ProductCatalog } from './ProductCatalog.js'
 
-export class CashierSession {
+export class CashierTerminal {
   private cart: Cart = new Cart()
 
   constructor(
