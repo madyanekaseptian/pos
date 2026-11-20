@@ -34,6 +34,10 @@ export class CashierTerminal {
     this.cart.addItem(product, quantity, availableStock)
   }
 
+  clearCart(): void {
+    this.cart.clear()
+  }
+
   // --- OPERASI BARANG ---
   // Kasir scan barcode fisik (memakai findBySku)
   scanBarcode(sku: string, quantity: number = 1): void {
